@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Agriculture & Climate Theme */
+    --background: 45 20% 96%;
+    --foreground: 140 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 140 40% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 140 40% 12%;
+
+    /* Primary: Deep forest green - growth, agriculture */
+    --primary: 140 60% 30%;
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 140 60% 25%;
+
+    /* Secondary: Earth brown - soil, foundation */
+    --secondary: 30 25% 45%;
+    --secondary-foreground: 0 0% 98%;
+
+    /* Muted: Soft sage for backgrounds */
+    --muted: 140 20% 92%;
+    --muted-foreground: 140 20% 40%;
+
+    /* Accent: Sky blue - water, climate */
+    --accent: 200 70% 50%;
+    --accent-foreground: 0 0% 98%;
+
+    /* Success: Fresh green */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+
+    /* Warning: Amber - alerts */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
+
+    /* Destructive: Deep red */
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 140 20% 85%;
+    --input: 140 20% 90%;
+    --ring: 140 60% 30%;
+
+    --radius: 0.75rem;
+    
+    /* Custom gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(140 60% 30%), hsl(140 70% 40%));
+    --gradient-earth: linear-gradient(180deg, hsl(30 35% 55%), hsl(30 25% 40%));
+    --gradient-sky: linear-gradient(180deg, hsl(200 80% 60%), hsl(200 70% 45%));
+    
+    /* Shadows */
+    --shadow-soft: 0 2px 12px hsl(140 30% 20% / 0.08);
+    --shadow-strong: 0 8px 24px hsl(140 30% 20% / 0.15);
+    
+    /* Transitions */
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 140 30% 8%;
+    --foreground: 140 20% 95%;
+
+    --card: 140 25% 12%;
+    --card-foreground: 140 20% 95%;
+
+    --popover: 140 25% 12%;
+    --popover-foreground: 140 20% 95%;
+
+    --primary: 140 60% 45%;
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 140 60% 50%;
+
+    --secondary: 30 20% 30%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 140 20% 15%;
+    --muted-foreground: 140 15% 60%;
+
+    --accent: 200 70% 50%;
+    --accent-foreground: 0 0% 98%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 140 20% 20%;
+    --input: 140 20% 18%;
+    --ring: 140 60% 45%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

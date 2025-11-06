@@ -1,0 +1,10 @@
+project_id = "wemtoxjiimqahpfdqvhd"
+
+[functions.analyze-crop]
+verify_jwt = true
+
+[functions.generate-recommendations]
+verify_jwt = true
+
+[functions.generate-ai-alerts]
+verify_jwt = true
