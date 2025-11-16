@@ -12,8 +12,7 @@ This README covers local setup, environment variables, dev/build scripts, and no
 1. Clone the repo:
 
 ```sh
-git clone <YOUR_GIT_URL>
-cd <YOUR_PROJECT_NAME>
+git clone https://github.com/Kasainie/grow-resiliently.git
 ```
 
 2. Install dependencies and start dev server:
