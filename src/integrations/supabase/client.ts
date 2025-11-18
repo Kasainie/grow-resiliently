@@ -5,6 +5,19 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// Runtime guard: give a clear error when required env vars are missing.
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  // Helpful in dev: replace silent "failed to fetch" caused by undefined base URL
+  const missing = [] as string[];
+  if (!SUPABASE_URL) missing.push('VITE_SUPABASE_URL');
+  if (!SUPABASE_PUBLISHABLE_KEY) missing.push('VITE_SUPABASE_PUBLISHABLE_KEY');
+  const msg = `Missing required env variables for Supabase client: ${missing.join(', ')}.\n` +
+    `Create a .env (or .env.local) with those values and restart the dev server.`;
+  // eslint-disable-next-line no-console
+  console.error(msg);
+  throw new Error(msg);
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 

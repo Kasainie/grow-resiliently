@@ -38,7 +38,7 @@ const Auth = () => {
       if (error) throw error;
 
       toast({ title: "Welcome back!", description: "You've successfully logged in." });
-      navigate("/dashboard");
+      navigate("/dashboard?welcome=true");
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({ title: "Validation error", description: error.errors[0].message, variant: "destructive" });
@@ -61,7 +61,7 @@ const Auth = () => {
     try {
       authSchema.parse(signupData);
       
-      const redirectUrl = `${window.location.origin}/dashboard`;
+      const redirectUrl = `${window.location.origin}/dashboard?welcome=true`;
       
       const { error } = await supabase.auth.signUp({
         email: signupData.email.trim(),
@@ -80,7 +80,7 @@ const Auth = () => {
         title: "Account created!", 
         description: "Welcome to CSA.AI. Let's get your farm registered."
       });
-      navigate("/dashboard");
+      navigate("/dashboard?welcome=true");
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({ title: "Validation error", description: error.errors[0].message, variant: "destructive" });

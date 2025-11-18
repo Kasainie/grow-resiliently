@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,9 +6,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
-import { CheckCircle, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+
+interface Farm {
+  id: string;
+  name: string;
+  area_ha: number;
+  latitude: number;
+  longitude: number;
+  has_irrigation: boolean;
+  soil_type: string;
+}
 
 const farmSchema = z.object({
   name: z.string().min(2, "Farm name must be at least 2 characters").max(100),
@@ -20,25 +27,26 @@ const farmSchema = z.object({
   soil_type: z.string().min(1, "Soil type is required").max(50),
 });
 
-export const FarmRegistration = ({ onSuccess }: { onSuccess?: () => void }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
+interface FarmEditorProps {
+  farm: Farm;
+  onSave: (farm: Omit<Farm, 'id'>) => void;
+  onCancel: () => void;
+}
+
+export const FarmEditor = ({ farm, onSave, onCancel }: FarmEditorProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    latitude: "",
-    longitude: "",
-    area_ha: "",
-    soil_type: "loamy",
-    has_irrigation: false,
+    name: farm.name,
+    latitude: farm.latitude.toString(),
+    longitude: farm.longitude.toString(),
+    area_ha: farm.area_ha.toString(),
+    soil_type: farm.soil_type,
+    has_irrigation: farm.has_irrigation,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-    
     setLoading(true);
 
     try {
@@ -48,25 +56,25 @@ export const FarmRegistration = ({ onSuccess }: { onSuccess?: () => void }) => {
         setLoading(false);
         return;
       }
-      
+
       if (!formData.latitude) {
         toast({ title: "Validation error", description: "Latitude is required", variant: "destructive" });
         setLoading(false);
         return;
       }
-      
+
       if (!formData.longitude) {
         toast({ title: "Validation error", description: "Longitude is required", variant: "destructive" });
         setLoading(false);
         return;
       }
-      
+
       if (!formData.area_ha) {
         toast({ title: "Validation error", description: "Farm area is required", variant: "destructive" });
         setLoading(false);
         return;
       }
-      
+
       if (!formData.soil_type) {
         toast({ title: "Validation error", description: "Soil type is required", variant: "destructive" });
         setLoading(false);
@@ -83,48 +91,16 @@ export const FarmRegistration = ({ onSuccess }: { onSuccess?: () => void }) => {
 
       farmSchema.parse(data);
 
-      const { error } = await supabase.from("farms").insert({
-        user_id: user.id,
+      onSave({
         ...data,
         has_irrigation: formData.has_irrigation,
       });
-
-      if (error) throw error;
-
-      // Verify farm was saved
-      const { data: savedFarms, error: verifyError } = await supabase
-        .from("farms")
-        .select("id, name")
-        .eq("user_id", user.id)
-        .eq("name", formData.name.trim())
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (verifyError || !savedFarms || savedFarms.length === 0) {
-        throw new Error("Farm was not saved. Please try again.");
-      }
-
-      setRegistrationSuccess(true);
-      toast({ 
-        title: "✅ Farm Stored Successfully!", 
-        description: `"${formData.name}" has been saved to your account and will not be lost.`,
-        className: "bg-green-50 border-green-200"
-      });
-      
-      // Small delay to show success message before redirecting
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        navigate("/dashboard");
-      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({ title: "Validation error", description: error.errors[0].message, variant: "destructive" });
       } else {
         toast({
-          title: "Registration failed",
+          title: "Error",
           description: error instanceof Error ? error.message : "An error occurred",
           variant: "destructive",
         });
@@ -138,46 +114,15 @@ export const FarmRegistration = ({ onSuccess }: { onSuccess?: () => void }) => {
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          {registrationSuccess ? (
-            <>
-              <CheckCircle className="h-6 w-6 text-green-600" />
-              Farm Registered Successfully!
-            </>
-          ) : (
-            <>
-              <AlertCircle className="h-6 w-6 text-primary" />
-              Register Your Farm
-            </>
-          )}
+          <AlertCircle className="h-6 w-6 text-blue-600" />
+          Edit Farm Details
         </CardTitle>
         <CardDescription>
-          {registrationSuccess 
-            ? "Your farm data is safely stored in our database."
-            : "Tell us about your farm to get personalized climate-smart recommendations"
-          }
+          Update your farm information. All fields are required.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {registrationSuccess ? (
-          <div className="space-y-4">
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 font-medium">✓ {formData.name} has been saved</p>
-              <p className="text-green-700 text-sm mt-2">
-                Your farm details are now stored and can be accessed anytime.
-              </p>
-            </div>
-            <Button 
-              onClick={() => {
-                if (onSuccess) onSuccess();
-                else navigate("/dashboard");
-              }}
-              className="w-full"
-            >
-              Continue to Dashboard
-            </Button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="name">Farm Name *</Label>
             <Input
@@ -261,11 +206,21 @@ export const FarmRegistration = ({ onSuccess }: { onSuccess?: () => void }) => {
             <Label htmlFor="irrigation">Farm has irrigation system</Label>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Saving to Database..." : "Register & Store Farm"}
-          </Button>
-          </form>
-        )}
+          <div className="flex gap-3">
+            <Button type="submit" className="flex-1" disabled={loading}>
+              {loading ? "Saving Changes..." : "Save Changes"}
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="flex-1"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
       </CardContent>
     </Card>
   );
