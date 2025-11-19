@@ -12,11 +12,6 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: "dist",
     minify: "terser",
-    terserOptions: {
-      compress: {
-        drop_console: true,
-      },
-    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
