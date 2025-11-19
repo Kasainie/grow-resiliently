@@ -225,6 +225,68 @@ const Dashboard = () => {
     );
   }
 
+  // Show farm form FIRST (highest priority) - edit or add new farm
+  if (showFarmForm) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card sticky top-0 z-40">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
+            <button
+              onClick={() => window.location.href = "/"}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+              title="Go to home"
+            >
+              <Sprout className="h-6 w-6 text-primary" />
+              <span className="text-lg md:text-xl font-bold text-primary">CSA.AI</span>
+            </button>
+            <div className="flex items-center gap-1 md:gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => {
+                  setShowFarmForm(false);
+                  setEditingFarmId(null);
+                  setSearchParams({ view: 'farms' });
+                }}
+                className="text-xs md:text-sm"
+              >
+                ← <span className="hidden sm:inline ml-1">Back</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs md:text-sm">
+                <LogOut className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <div className="container mx-auto px-4 py-12 flex items-center justify-center min-h-[calc(100vh-80px)]">
+          <div className="w-full max-w-2xl">
+            {farmToEdit ? (
+              <FarmEditor
+                farm={farmToEdit}
+                onSave={(updatedData) => {
+                  handleUpdateFarm(editingFarmId, updatedData);
+                }}
+                onCancel={() => {
+                  setShowFarmForm(false);
+                  setEditingFarmId(null);
+                }}
+              />
+            ) : (
+              <FarmRegistration
+                onSuccess={() => {
+                  fetchFarms();
+                  setShowFarmForm(false);
+                }}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Show welcome screen after login/signup
   if (isWelcome && farms.length === 0) {
     return (
@@ -306,68 +368,6 @@ const Dashboard = () => {
   if (isWelcome && farms.length > 0) {
     // Remove welcome parameter and show normal dashboard
     setSearchParams({});
-  }
-
-  // Show farm form FIRST (highest priority) - edit or add new farm
-  if (showFarmForm) {
-    return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card sticky top-0 z-40">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
-            <button
-              onClick={() => window.location.href = "/"}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
-              title="Go to home"
-            >
-              <Sprout className="h-6 w-6 text-primary" />
-              <span className="text-lg md:text-xl font-bold text-primary">CSA.AI</span>
-            </button>
-            <div className="flex items-center gap-1 md:gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => {
-                  setShowFarmForm(false);
-                  setEditingFarmId(null);
-                  setSearchParams({ view: 'farms' });
-                }}
-                className="text-xs md:text-sm"
-              >
-                ← <span className="hidden sm:inline ml-1">Back</span>
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs md:text-sm">
-                <LogOut className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        <div className="container mx-auto px-4 py-12 flex items-center justify-center min-h-[calc(100vh-80px)]">
-          <div className="w-full max-w-2xl">
-            {farmToEdit ? (
-              <FarmEditor
-                farm={farmToEdit}
-                onSave={(updatedData) => {
-                  handleUpdateFarm(editingFarmId, updatedData);
-                }}
-                onCancel={() => {
-                  setShowFarmForm(false);
-                  setEditingFarmId(null);
-                }}
-              />
-            ) : (
-              <FarmRegistration
-                onSuccess={() => {
-                  fetchFarms();
-                  setShowFarmForm(false);
-                }}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-    );
   }
 
   // Show My Farms view when view=farms
