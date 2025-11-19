@@ -231,10 +231,14 @@ const Dashboard = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
         <header className="border-b border-border bg-card">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.location.href = "/"}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+              title="Go to home"
+            >
               <Sprout className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">CSA.AI</span>
-            </div>
+              <span className="text-xl font-bold text-primary">CSA.AI</span>
+            </button>
             <Button variant="ghost" size="sm" onClick={async () => {
               await signOut();
               window.location.href = "/";
@@ -310,10 +314,14 @@ const Dashboard = () => {
       <div className="min-h-screen bg-background">
         <header className="border-b border-border bg-card sticky top-0 z-40">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.location.href = "/"}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+              title="Go to home"
+            >
               <Sprout className="h-6 w-6 text-primary" />
-              <span className="text-lg md:text-xl font-bold">CSA.AI</span>
-            </div>
+              <span className="text-lg md:text-xl font-bold text-primary">CSA.AI</span>
+            </button>
             <div className="flex items-center gap-1 md:gap-2">
               <Button 
                 variant="ghost" 
@@ -368,10 +376,14 @@ const Dashboard = () => {
       <div className="min-h-screen bg-background">
         <header className="border-b border-border bg-card sticky top-0 z-40">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.location.href = "/"}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+              title="Go to home"
+            >
               <Sprout className="h-6 w-6 text-primary" />
-              <span className="text-lg md:text-xl font-bold">CSA.AI</span>
-            </div>
+              <span className="text-lg md:text-xl font-bold text-primary">CSA.AI</span>
+            </button>
             <div className="flex items-center gap-1 md:gap-2">
               <Button 
                 variant="ghost" 
