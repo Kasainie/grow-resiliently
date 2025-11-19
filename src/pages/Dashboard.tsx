@@ -376,12 +376,21 @@ const Dashboard = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
+                onClick={() => setSearchParams({})}
+                className="text-xs md:text-sm"
+                title="Go back"
+              >
+                ← <span className="hidden sm:inline ml-1">Back</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
                 onClick={() => window.location.href = "/"}
-                className="flex items-center gap-2 hover:bg-primary/10 text-xs md:text-sm"
+                className="text-xs md:text-sm"
                 title="Back to Home"
               >
                 <Home className="h-4 w-4" />
-                <span className="hidden sm:inline">Home</span>
+                <span className="hidden sm:inline ml-1">Home</span>
               </Button>
               <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs md:text-sm">
                 <LogOut className="h-4 w-4 mr-1" />
@@ -581,9 +590,19 @@ const Dashboard = () => {
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2 md:gap-3">
-          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+          <button
+            onClick={() => {
+              // Toggle farm details modal/view
+              const farmDetailsElement = document.getElementById("farm-details-modal");
+              if (farmDetailsElement) {
+                farmDetailsElement.classList.toggle("hidden");
+              }
+            }}
+            className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 hover:bg-primary/5 rounded-lg p-2 transition-colors cursor-pointer"
+            title="Click to view farm details"
+          >
             <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 text-left">
               <h1 className="text-lg md:text-xl font-bold text-foreground truncate">
                 {selectedFarm?.name || "My Farm"}
               </h1>
@@ -591,27 +610,36 @@ const Dashboard = () => {
                 {selectedFarm?.area_ha} hectares • {selectedFarm?.soil_type}
               </p>
             </div>
-          </div>
+          </button>
           <div className="flex items-center gap-1 md:gap-2 flex-wrap justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.location.href = "/"}
+              className="text-xs md:text-sm"
+              title="Back to Home"
+            >
+              <Home className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Home</span>
+            </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowFarmForm(true)}
+              onClick={() => setSearchParams({ view: "farms" })}
               className="text-xs md:text-sm"
+              title="View all farms"
             >
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Add Farm</span>
+              <span className="text-lg mr-1">📋</span>
+              <span className="hidden sm:inline">Farms</span>
             </Button>
             <Button
               size="sm"
-              onClick={() => setSearchParams({ view: "farms" })}
+              onClick={() => setShowFarmForm(true)}
               className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-0 shadow-md hover:shadow-lg transition-all text-xs md:text-sm"
+              title="Add a new farm"
             >
-              <span className="text-lg mr-1">📋</span>
-              <span className="hidden sm:inline">My Farms</span>
-              <Badge className="ml-1 bg-white/20 hover:bg-white/30 text-white border-0 text-xs">
-                {farms.length}
-              </Badge>
+              <Plus className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Add Farm</span>
             </Button>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs md:text-sm">
               <LogOut className="h-4 w-4 mr-1" />
@@ -733,28 +761,35 @@ const Dashboard = () => {
             )}
 
             {/* Farm Stats */}
-            <Card className="p-6">
-              <h3 className="font-semibold text-foreground mb-4">Farm Details</h3>
+            <Card className="p-6" id="farm-details-modal">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Farm Details
+              </h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
+                  <span className="text-muted-foreground">Farm Name:</span>
+                  <span className="font-medium">{selectedFarm?.name}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Area:</span>
-                  <span className="font-medium">{selectedFarm?.area_ha} ha</span>
+                  <span className="font-medium">{selectedFarm?.area_ha} hectares</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Soil Type:</span>
-                  <span className="font-medium">{selectedFarm?.soil_type}</span>
+                  <span className="font-medium capitalize">{selectedFarm?.soil_type}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Irrigation:</span>
                   <span className="font-medium">
-                    {selectedFarm?.has_irrigation ? "Yes" : "No"}
+                    {selectedFarm?.has_irrigation ? "Yes ✓" : "No"}
                   </span>
                 </div>
                 {selectedFarm?.latitude && selectedFarm?.longitude && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Location:</span>
                     <span className="font-medium text-xs">
-                      {selectedFarm.latitude.toFixed(4)}, {selectedFarm.longitude.toFixed(4)}
+                      {selectedFarm.latitude.toFixed(4)}°, {selectedFarm.longitude.toFixed(4)}°
                     </span>
                   </div>
                 )}
