@@ -11,7 +11,7 @@ import { ImageUpload } from "@/components/farm/ImageUpload";
 import { AlertsPanel } from "@/components/alerts/AlertsPanel";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  MapPin, Sprout, LogOut, Plus, Loader2, Sparkles, Trash2, Edit3, ArrowRight
+  MapPin, Sprout, LogOut, Plus, Loader2, Sparkles, Trash2, Edit3, ArrowRight, Home
 } from "lucide-react";
 
 interface Farm {
@@ -308,13 +308,13 @@ const Dashboard = () => {
   if (showFarmForm) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <header className="border-b border-border bg-card sticky top-0 z-40">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Sprout className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">CSA.AI</span>
+              <span className="text-lg md:text-xl font-bold">CSA.AI</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -323,12 +323,13 @@ const Dashboard = () => {
                   setEditingFarmId(null);
                   setSearchParams({ view: 'farms' });
                 }}
+                className="text-xs md:text-sm"
               >
-                ← Back
+                ← <span className="hidden sm:inline ml-1">Back</span>
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs md:text-sm">
+                <LogOut className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Logout</span>
               </Button>
             </div>
           </div>
@@ -365,55 +366,58 @@ const Dashboard = () => {
   if (showMyFarms) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-card">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <header className="border-b border-border bg-card sticky top-0 z-40">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Sprout className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">CSA.AI</span>
+              <span className="text-lg md:text-xl font-bold">CSA.AI</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => setSearchParams({})}
+                onClick={() => window.location.href = "/"}
+                className="flex items-center gap-2 hover:bg-primary/10 text-xs md:text-sm"
+                title="Back to Home"
               >
-                ← Back to Dashboard
+                <Home className="h-4 w-4" />
+                <span className="hidden sm:inline">Home</span>
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs md:text-sm">
+                <LogOut className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Logout</span>
               </Button>
             </div>
           </div>
         </header>
 
-        <div className="container mx-auto px-4 py-12">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-2">
+        <div className="container mx-auto px-3 md:px-4 py-8 md:py-12">
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
               📋 My Farms
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base md:text-lg text-muted-foreground">
               You have {farms.length} farm{farms.length !== 1 ? "s" : ""} registered
             </p>
           </div>
 
           {farms.length === 0 ? (
-            <div className="text-center py-16">
-              <Sprout className="h-20 w-20 mx-auto mb-4 text-primary opacity-30" />
-              <p className="text-lg text-muted-foreground mb-6">
+            <div className="text-center py-12 md:py-16">
+              <Sprout className="h-16 md:h-20 w-16 md:w-20 mx-auto mb-4 text-primary opacity-30" />
+              <p className="text-base md:text-lg text-muted-foreground mb-6">
                 No farms registered yet.
               </p>
               <Button
                 size="lg"
                 onClick={() => setShowFarmForm(true)}
-                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white w-full sm:w-auto"
               >
                 <Plus className="h-5 w-5 mr-2" />
                 Add Your First Farm
               </Button>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {farms.map((farm) => (
                 <Card
                   key={farm.id}
@@ -575,76 +579,77 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <MapPin className="h-5 w-5 text-primary" />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">
+      <header className="border-b border-border bg-card sticky top-0 z-40">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2 md:gap-3">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+            <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg md:text-xl font-bold text-foreground truncate">
                 {selectedFarm?.name || "My Farm"}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground truncate">
                 {selectedFarm?.area_ha} hectares • {selectedFarm?.soil_type}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2 flex-wrap justify-end">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowFarmForm(true)}
+              className="text-xs md:text-sm"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Farm
+              <Plus className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Add Farm</span>
             </Button>
             <Button
               size="sm"
               onClick={() => setSearchParams({ view: "farms" })}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-0 shadow-md hover:shadow-lg transition-all"
+              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-0 shadow-md hover:shadow-lg transition-all text-xs md:text-sm"
             >
-              <span className="text-lg mr-2">📋</span>
-              My Farms
-              <Badge className="ml-2 bg-white/20 hover:bg-white/30 text-white border-0">
+              <span className="text-lg mr-1">📋</span>
+              <span className="hidden sm:inline">My Farms</span>
+              <Badge className="ml-1 bg-white/20 hover:bg-white/30 text-white border-0 text-xs">
                 {farms.length}
               </Badge>
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs md:text-sm">
+              <LogOut className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-3 gap-6">
+      <div className="container mx-auto px-3 md:px-4 py-4 md:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Alerts Panel */}
             <AlertsPanel farmId={selectedFarm?.id} />
 
             {/* Recommendations */}
-            <Card className="p-6 border-primary/30">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  AI-Powered Climate-Smart Recommendations
+            <Card className="p-4 md:p-6 border-primary/30">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6 mb-4 md:mb-6">
+                <h2 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
+                  <span>AI Recommendations</span>
                 </h2>
                 <Button
                   onClick={generateRecommendations}
                   disabled={generatingRecs || !selectedFarm}
                   size="sm"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 w-full md:w-auto justify-center"
                 >
                   {generatingRecs ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Generating...
+                      <span>Generating...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4" />
-                      Generate New
+                      <span>Generate</span>
                     </>
                   )}
                 </Button>
@@ -713,7 +718,7 @@ const Dashboard = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6 lg:col-span-1">
             {/* Image Upload */}
             {selectedFarm && (
               <ImageUpload
