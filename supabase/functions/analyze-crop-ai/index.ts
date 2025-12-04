@@ -33,13 +33,30 @@ serve(async (req) => {
 
     console.log("Starting crop image analysis...");
 
-    const prompt = `You are an expert agricultural pathologist. Analyze this crop image and identify:
-1. Any visible diseases, pests, or stress conditions
-2. Severity level (low, medium, high, critical)
-3. Specific treatment recommendations
+    const prompt = `You are an expert agricultural pathologist and crop specialist. Provide a comprehensive analysis of this crop image.
 
-Respond in JSON format only:
-{"disease": "Disease name or 'Healthy'", "severity": "low|medium|high", "confidence": 0-100, "description": "What you see", "recommendations": "Treatment steps"}`;
+ANALYZE AND PROVIDE IN JSON FORMAT ONLY:
+{
+  "disease": "Primary issue or 'Healthy'",
+  "severity": "low|medium|high|critical",
+  "confidence": 0-100,
+  "cropType": "Type of crop visible",
+  "growthStage": "Seedling|Vegetative|Flowering|Fruiting|Mature|Harvest",
+  "overallHealth": "Brief overall health assessment",
+  "description": "Detailed visual assessment (5-6 sentences about what you observe)",
+  "symptoms": ["List", "of", "visible", "symptoms", "or", "signs"],
+  "possibleCauses": ["Potential", "causes", "or", "factors"],
+  "riskFactors": "Environmental or management factors that may contribute",
+  "immediateActions": "Urgent steps to take in next 24-48 hours",
+  "shortTermTreatment": "Treatment plan for next 1-2 weeks",
+  "longTermManagement": "Prevention and management strategy for future",
+  "recommendedProducts": ["Fungicide name", "Pesticide name", "Fertilizer name"],
+  "monitoringSchedule": "How often to inspect and what to look for",
+  "weatherConsiderations": "How current/future weather may affect the crop",
+  "alternativeSolutions": "Organic or non-chemical alternatives if applicable"
+}
+
+Be thorough, specific, and practical in your recommendations.`;
 
     let analysis = null;
 
@@ -67,7 +84,7 @@ Respond in JSON format only:
                 ],
               },
             ],
-            max_tokens: 500,
+            max_tokens: 1500,
           }),
         });
 
@@ -128,11 +145,23 @@ Respond in JSON format only:
     // Fallback analysis
     if (!analysis) {
       analysis = {
-        disease: "Image analysis pending",
+        disease: "Analysis pending",
         severity: "low",
         confidence: 0,
-        description: "Could not analyze image with AI. Please check your API keys.",
-        recommendations: "Ensure API keys are configured in Supabase secrets.",
+        cropType: "Unknown",
+        growthStage: "Unknown",
+        overallHealth: "Unable to assess - API keys not configured",
+        description: "Could not perform detailed analysis. Please ensure OPENAI_API_KEY and GEMINI_API_KEY are configured in Supabase secrets.",
+        symptoms: ["No analysis available"],
+        possibleCauses: ["API keys not configured"],
+        riskFactors: "Unable to assess",
+        immediateActions: "Configure API keys in Supabase Dashboard",
+        shortTermTreatment: "Pending API configuration",
+        longTermManagement: "Pending API configuration",
+        recommendedProducts: ["Pending analysis"],
+        monitoringSchedule: "Monitor daily for changes",
+        weatherConsiderations: "Consider local weather patterns",
+        alternativeSolutions: "Consult local agricultural experts"
       };
     }
 
