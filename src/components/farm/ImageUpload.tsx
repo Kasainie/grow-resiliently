@@ -8,6 +8,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { Upload, Camera, Sparkles } from "lucide-react";
 import { CropAnalysisResults } from "./CropAnalysisResults";
 
+export interface AnalysisData {
+  disease?: string;
+  severity?: string;
+  confidence?: number;
+  description?: string;
+  recommendations?: string;
+}
+
 interface ImageUploadProps {
   farmId: string;
   plotId?: string;
@@ -21,7 +29,7 @@ export const ImageUpload = ({ farmId, plotId, onUploadComplete }: ImageUploadPro
   const [analyzing, setAnalyzing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<string>("");
+  const [analysis, setAnalysis] = useState<any>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,12 +99,15 @@ export const ImageUpload = ({ farmId, plotId, onUploadComplete }: ImageUploadPro
           const { data } = response;
           console.log("Crop analysis complete:", data);
 
-          setAnalysis(data.analysis);
-
-          toast({
-            title: `Analysis Complete!`,
-            description: `Detected: ${data.analysis.disease || "Unknown"}`,
-          });
+          if (data && data.analysis) {
+            setAnalysis(data.analysis);
+            toast({
+              title: `Analysis Complete!`,
+              description: `Detected: ${data.analysis.disease || "Unknown"}`,
+            });
+          } else {
+            throw new Error("Invalid response format from analysis");
+          }
 
           if (onUploadComplete) {
             onUploadComplete();
@@ -163,6 +174,8 @@ export const ImageUpload = ({ farmId, plotId, onUploadComplete }: ImageUploadPro
                 accept="image/*"
                 onChange={handleFileSelect}
                 className="hidden"
+                title="Select crop image"
+                aria-label="Select crop image"
               />
               {selectedFile && (
                 <span className="text-sm text-muted-foreground">{selectedFile.name}</span>
