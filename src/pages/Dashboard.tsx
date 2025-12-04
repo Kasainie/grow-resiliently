@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { ImageUpload } from "@/components/farm/ImageUpload";
 import { AlertsPanel } from "@/components/alerts/AlertsPanel";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  MapPin, Sprout, LogOut, Plus, Loader2, Sparkles, Trash2, Edit3, ArrowRight, Home
+  MapPin, Sprout, LogOut, Plus, Loader2, Sparkles, Trash2, Edit3, ArrowRight, Home, ChevronLeft, ChevronRight, RefreshCw
 } from "lucide-react";
 
 interface Farm {
@@ -36,6 +36,7 @@ interface Recommendation {
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isWelcome = searchParams.get("welcome") === "true";
   const showMyFarms = searchParams.get("view") === "farms";
@@ -46,6 +47,65 @@ const Dashboard = () => {
   const [showFarmForm, setShowFarmForm] = useState(false);
   const [editingFarmId, setEditingFarmId] = useState<string | null>(null);
   const [generatingRecs, setGeneratingRecs] = useState(false);
+  const [farmHistory, setFarmHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Navigate to farm and manage history
+  const navigateToFarm = (farmId: string) => {
+    if (selectedFarm?.id !== farmId) {
+      const farm = farms.find(f => f.id === farmId);
+      if (farm) {
+        setSelectedFarm(farm);
+        setFarmHistory([...farmHistory.slice(0, historyIndex + 1), farmId]);
+        setHistoryIndex(farmHistory.slice(0, historyIndex + 1).length);
+      }
+    }
+  };
+
+  // Go back in farm history
+  const goBack = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      const farmId = farmHistory[newIndex];
+      const farm = farms.find(f => f.id === farmId);
+      if (farm) {
+        setSelectedFarm(farm);
+        setHistoryIndex(newIndex);
+      }
+    }
+  };
+
+  // Go forward in farm history
+  const goForward = () => {
+    if (historyIndex < farmHistory.length - 1) {
+      const newIndex = historyIndex + 1;
+      const farmId = farmHistory[newIndex];
+      const farm = farms.find(f => f.id === farmId);
+      if (farm) {
+        setSelectedFarm(farm);
+        setHistoryIndex(newIndex);
+      }
+    }
+  };
+
+  // Refresh current data
+  const refreshData = async () => {
+    toast({
+      title: "Refreshing...",
+      description: "Fetching latest data",
+    });
+    if (selectedFarm) {
+      await fetchRecommendations(selectedFarm.id);
+    }
+  };
+
+  // Initialize history when farm is selected
+  useEffect(() => {
+    if (selectedFarm && farmHistory.length === 0) {
+      setFarmHistory([selectedFarm.id]);
+      setHistoryIndex(0);
+    }
+  }, [selectedFarm?.id]);
 
   // Memoize the farm to edit for instant form rendering
   const farmToEdit = useMemo(
@@ -623,12 +683,12 @@ const Dashboard = () => {
                 farmDetailsElement.classList.toggle("hidden");
               }
             }}
-            className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 hover:bg-primary/5 rounded-lg p-2 transition-colors cursor-pointer"
-            title="Click to view farm details"
+            className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 hover:bg-primary/5 rounded-lg p-2 transition-colors cursor-pointer group"
+            title="Click to view farm details or select another farm"
           >
             <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
             <div className="min-w-0 flex-1 text-left">
-              <h1 className="text-lg md:text-xl font-bold text-foreground truncate">
+              <h1 className="text-lg md:text-xl font-bold text-foreground truncate group-hover:text-primary transition-colors">
                 {selectedFarm?.name || "My Farm"}
               </h1>
               <p className="text-xs md:text-sm text-muted-foreground truncate">
@@ -637,6 +697,39 @@ const Dashboard = () => {
             </div>
           </button>
           <div className="flex items-center gap-1 md:gap-2 flex-wrap justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goBack}
+              disabled={historyIndex <= 0}
+              className="text-xs md:text-sm"
+              title="Previous farm"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Back</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goForward}
+              disabled={historyIndex >= farmHistory.length - 1}
+              className="text-xs md:text-sm"
+              title="Next farm"
+            >
+              <ChevronRight className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Forward</span>
+            </Button>
+            <div className="w-px h-6 bg-border mx-1"></div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refreshData}
+              className="text-xs md:text-sm"
+              title="Refresh data"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Refresh</span>
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -779,8 +872,12 @@ const Dashboard = () => {
                 onUploadComplete={() => {
                   toast({
                     title: "Image uploaded!",
-                    description: "AI analysis will be available soon.",
+                    description: "Refreshing analysis results...",
                   });
+                  // Refresh recommendations after a short delay to allow backend to process
+                  setTimeout(() => {
+                    fetchRecommendations(selectedFarm.id);
+                  }, 1500);
                 }}
               />
             )}
