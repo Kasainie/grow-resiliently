@@ -89,142 +89,39 @@ export const AlertsPanel = ({ farmId }: AlertsPanelProps) => {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Not authenticated",
+        description: "Please log in to generate alerts",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGenerating(true);
     try {
-      // Get farm details
-      const { data: farm, error: farmError } = await supabase
-        .from("farms")
-        .select("*")
-        .eq("id", farmId)
-        .maybeSingle();
+      console.log("Calling edge function to generate alerts...");
 
-      if (farmError || !farm) throw new Error("Farm not found");
+      const response = await supabase.functions.invoke('generate-alerts-ai', {
+        body: {
+          farmId,
+          userId: user.id,
+        },
+      });
 
-      const prompt = `Generate 4 farm alerts for ${farm.name} (${farm.area_ha}ha, ${farm.soil_type || "unknown"} soil, irrigation: ${farm.has_irrigation ? "yes" : "no"}) in JSON only:
-{"alerts": [{"level": "critical", "title": "Alert 1", "message": "Msg"}, {"level": "warning", "title": "Alert 2", "message": "Msg"}, {"level": "warning", "title": "Alert 3", "message": "Msg"}, {"level": "info", "title": "Alert 4", "message": "Msg"}]}`;
-
-      let alerts = [];
-      let provider = "fallback";
-
-      // Try ChatGPT
-      const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      if (openaiKey && openaiKey !== "your-openai-api-key-here") {
-        try {
-          console.log("Using ChatGPT for alerts...");
-          const response = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${openaiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "gpt-3.5-turbo",
-              messages: [{ role: "user", content: prompt }],
-              temperature: 0.7,
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`);
-          }
-
-          const result = await response.json();
-          if (result.error) throw new Error(result.error.message);
-
-          const content = result.choices?.[0]?.message?.content || "";
-          if (!content) throw new Error("No content in ChatGPT response");
-
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            alerts = Array.isArray(parsed.alerts) ? parsed.alerts : [];
-            if (alerts.length > 0) provider = "ChatGPT";
-          }
-        } catch (e) {
-          console.error("ChatGPT failed:", e);
-          if (openaiKey === "your-openai-api-key-here") {
-            console.warn("OpenAI API key not configured");
-          }
-        }
+      if (response.error) {
+        throw new Error(response.error.message || "Edge function failed");
       }
-
-      // Try Gemini if ChatGPT failed
-      if (alerts.length === 0) {
-        const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        if (geminiKey && geminiKey !== "your-gemini-api-key-here") {
-          try {
-            console.log("Using Gemini for alerts...");
-            const response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                }),
-              }
-            );
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
-            }
-
-            const result = await response.json();
-            if (result.error) throw new Error(result.error.message);
-
-            const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-            if (!content) throw new Error("No content in Gemini response");
-
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              alerts = Array.isArray(parsed.alerts) ? parsed.alerts : [];
-              if (alerts.length > 0) provider = "Gemini";
-            }
-          } catch (e) {
-            console.error("Gemini failed:", e);
-            if (geminiKey === "your-gemini-api-key-here") {
-              console.warn("Gemini API key not configured");
-            }
-          }
-        }
-      }
-
-      // Fallback alerts
-      if (alerts.length === 0) {
-        alerts = [
-          { level: "critical", title: "Monitor Farm", message: `Check your ${farm.area_ha}ha farm for pests/diseases.` },
-          { level: "warning", title: "Soil Management", message: `${farm.soil_type || "Soil"} needs proper amendments.` },
-          { level: "warning", title: farm.has_irrigation ? "Optimize Irrigation" : "Water Critical", message: farm.has_irrigation ? "Review irrigation schedule." : "Manage water carefully." },
-          { level: "info", title: "Weekly Inspections", message: "Scout fields weekly for issues." },
-        ];
-        provider = "default";
-      }
-
-      // Insert alerts
-      const alertsToInsert = alerts.map((a) => ({
-        user_id: user?.id,
-        farm_id: farmId,
-        level: a.level || "info",
-        title: a.title,
-        message: a.message,
-        is_read: false,
-      }));
-
-      const { error } = await supabase.from("alerts").insert(alertsToInsert);
-
-      if (error) throw error;
-
-      setAlerts((prev) => [...alerts, ...prev]);
+      const { data } = response;
+      console.log("Alerts generated:", data);
 
       toast({
-        title: `Alerts Generated (${provider})!`,
-        description: `${alerts.length} new alerts created for your farm.`,
+        title: "Alerts Generated!",
+        description: `Created ${data.count || 0} alerts for your farm.`,
       });
     } catch (error) {
       console.error("Error generating alerts:", error);
+      console.error("Full error object:", { error });
       toast({
         title: "Failed to generate alerts",
         description: error instanceof Error ? error.message : "An error occurred",

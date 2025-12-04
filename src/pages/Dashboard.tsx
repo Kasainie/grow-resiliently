@@ -108,136 +108,36 @@ const Dashboard = () => {
   };
 
   const generateRecommendations = async () => {
-    if (!selectedFarm) return;
+    if (!selectedFarm || !user) return;
 
     setGeneratingRecs(true);
     try {
-      const prompt = `Generate 5 farm recommendations for ${selectedFarm.name} (${selectedFarm.area_ha}ha, ${selectedFarm.soil_type || "unknown"} soil, irrigation: ${selectedFarm.has_irrigation ? "yes" : "no"}) in JSON only:
-{"recommendations": [{"title": "Soil Testing", "description": "Test soil", "type": "soil", "priority": "high"}, {"title": "Crop Rotation", "description": "Rotate crops", "type": "crop_management", "priority": "high"}, {"title": "Water Management", "description": "Monitor moisture", "type": "irrigation", "priority": "medium"}, {"title": "Pest Management", "description": "Use IPM", "type": "pest_management", "priority": "high"}, {"title": "Weekly Monitoring", "description": "Scout fields", "type": "monitoring", "priority": "high"}]}`;
+      console.log("Calling edge function to generate recommendations...");
 
-      let recommendations = [];
-      let provider = "fallback";
+      const response = await supabase.functions.invoke('generate-recommendations-ai', {
+        body: {
+          farmId: selectedFarm.id,
+          userId: user.id,
+        },
+      });
 
-      // Try ChatGPT
-      const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      if (openaiKey && openaiKey !== "your-openai-api-key-here") {
-        try {
-          console.log("Using ChatGPT for recommendations...");
-          const response = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${openaiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "gpt-3.5-turbo",
-              messages: [{ role: "user", content: prompt }],
-              temperature: 0.7,
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`);
-          }
-
-          const result = await response.json();
-          if (result.error) throw new Error(result.error.message);
-          
-          const content = result.choices?.[0]?.message?.content || "";
-          if (!content) throw new Error("No content in ChatGPT response");
-          
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
-            if (recommendations.length > 0) provider = "ChatGPT";
-          }
-        } catch (e) {
-          console.error("ChatGPT failed:", e);
-          if (openaiKey === "your-openai-api-key-here") {
-            console.warn("OpenAI API key not configured");
-          }
-        }
+      if (response.error) {
+        throw new Error(response.error.message || "Edge function failed");
       }
 
-      // Try Gemini if ChatGPT failed
-      if (recommendations.length === 0) {
-        const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        if (geminiKey && geminiKey !== "your-gemini-api-key-here") {
-          try {
-            console.log("Using Gemini for recommendations...");
-            const response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                }),
-              }
-            );
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
-            }
-
-            const result = await response.json();
-            if (result.error) throw new Error(result.error.message);
-
-            const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-            if (!content) throw new Error("No content in Gemini response");
-
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
-              if (recommendations.length > 0) provider = "Gemini";
-            }
-          } catch (e) {
-            console.error("Gemini failed:", e);
-            if (geminiKey === "your-gemini-api-key-here") {
-              console.warn("Gemini API key not configured");
-            }
-          }
-        }
-      }
-
-      // Fallback recommendations
-      if (recommendations.length === 0) {
-        recommendations = [
-          { title: "Soil Testing", description: "Conduct comprehensive soil analysis", type: "soil", priority: "high" },
-          { title: "Crop Rotation", description: "Implement 3-4 year rotation plan", type: "crop_management", priority: "high" },
-          { title: selectedFarm.has_irrigation ? "Optimize Irrigation" : "Install Irrigation", description: selectedFarm.has_irrigation ? "Review irrigation schedule" : "Consider drip irrigation system", type: "irrigation", priority: "high" },
-          { title: "Integrated Pest Management", description: "Use cultural, biological, and chemical controls", type: "pest_management", priority: "high" },
-          { title: "Weekly Farm Monitoring", description: "Scout fields and keep detailed records", type: "monitoring", priority: "high" },
-        ];
-        provider = "default";
-      }
-
-      // Insert recommendations
-      const recsToInsert = recommendations.map((rec) => ({
-        farm_id: selectedFarm.id,
-        title: rec.title,
-        description: rec.description,
-        type: rec.type || "general",
-        priority: rec.priority || "medium",
-      }));
-
-      const { error } = await supabase.from("recommendations").insert(recsToInsert);
-
-      if (error) throw error;
+      const { data } = response;
+      console.log("Recommendations generated:", data);
 
       toast({
-        title: `Recommendations Generated (${provider})!`,
-        description: "Check your action plan below.",
+        title: "Recommendations Generated!",
+        description: `Created ${data.count || 0} recommendations for your farm.`,
       });
 
       fetchRecommendations(selectedFarm.id);
     } catch (error) {
       console.error("Error generating recommendations:", error);
       const errorMsg = error instanceof Error ? error.message : "An error occurred";
+      console.error("Full error object:", { error });
       toast({
         title: "Failed to generate recommendations",
         description: errorMsg,

@@ -61,28 +61,11 @@ export const ImageUpload = ({ farmId, plotId, onUploadComplete }: ImageUploadPro
     if (!selectedFile || !user) return;
 
     setLoading(true);
-    setAnalyzing(false);
+    setAnalyzing(true);
     setAnalysis("");
 
     try {
-      // Save the image record first
-      const { error: insertError } = await supabase.from("images").insert({
-        farm_id: farmId,
-        plot_id: plotId || null,
-        user_id: user.id,
-        storage_path: `crop-images/${user.id}/${Date.now()}.${selectedFile.name.split(".").pop()}`,
-        captured_at: new Date().toISOString(),
-      });
-
-      if (insertError) throw insertError;
-
-      toast({ 
-        title: "Image uploaded!", 
-        description: "Starting AI-powered disease analysis..." 
-      });
-
-      // Start AI analysis
-      setAnalyzing(true);
+      console.log("Converting image to base64...");
 
       // Convert image to base64
       const reader = new FileReader();
@@ -90,155 +73,37 @@ export const ImageUpload = ({ farmId, plotId, onUploadComplete }: ImageUploadPro
         const imageData = reader.result as string;
 
         try {
-          console.log("Starting AI crop analysis...");
+          console.log("Calling edge function for crop analysis...");
 
-          const prompt = `You are an expert agricultural pathologist. Analyze this crop image and identify:
-1. Any visible diseases, pests, or stress conditions
-2. Severity level (low, medium, high, critical)
-3. Specific treatment recommendations
+          const response = await supabase.functions.invoke('analyze-crop-ai', {
+            body: {
+              farmId,
+              userId: user.id,
+              imageData,
+              imageName: selectedFile.name,
+            },
+          });
 
-Respond in JSON format only:
-{"disease": "Disease name or 'Healthy'", "severity": "low|medium|high", "confidence": 0-100, "description": "What you see", "recommendations": "Treatment steps"}`;
-
-          let analysis = null;
-          let provider = "fallback";
-
-          // Try ChatGPT with vision
-          const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
-          if (openaiKey && openaiKey !== "your-openai-api-key-here") {
-            try {
-              console.log("Using ChatGPT for crop analysis...");
-              const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${openaiKey}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  model: "gpt-4o-mini",
-                  messages: [
-                    {
-                      role: "user",
-                      content: [
-                        {
-                          type: "text",
-                          text: prompt,
-                        },
-                        {
-                          type: "image_url",
-                          image_url: {
-                            url: imageData,
-                          },
-                        },
-                      ],
-                    },
-                  ],
-                  max_tokens: 500,
-                }),
-              });
-
-              if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`);
-              }
-
-              const result = await response.json();
-              if (result.error) throw new Error(result.error.message);
-
-              const content = result.choices?.[0]?.message?.content || "";
-              if (!content) throw new Error("No content in ChatGPT response");
-
-              const jsonMatch = content.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                analysis = JSON.parse(jsonMatch[0]);
-                provider = "ChatGPT";
-              }
-            } catch (e) {
-              console.error("ChatGPT analysis failed:", e);
-              if (openaiKey === "your-openai-api-key-here") {
-                console.warn("OpenAI API key not configured");
-              }
-            }
+          if (response.error) {
+            throw new Error(response.error.message || "Edge function failed");
           }
 
-          // Try Gemini if ChatGPT failed
-          if (!analysis) {
-            const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-            if (geminiKey && geminiKey !== "your-gemini-api-key-here") {
-              try {
-                console.log("Using Gemini for crop analysis...");
-                const base64Image = imageData.split(",")[1];
-                const response = await fetch(
-                  `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      contents: [
-                        {
-                          parts: [
-                            { text: prompt },
-                            {
-                              inlineData: {
-                                mimeType: "image/jpeg",
-                                data: base64Image,
-                              },
-                            },
-                          ],
-                        },
-                      ],
-                    }),
-                  }
-                );
+          const { data } = response;
+          console.log("Crop analysis complete:", data);
 
-                if (!response.ok) {
-                  const errorData = await response.json();
-                  throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
-                }
-
-                const result = await response.json();
-                if (result.error) throw new Error(result.error.message);
-
-                const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                if (!content) throw new Error("No content in Gemini response");
-
-                const jsonMatch = content.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                  analysis = JSON.parse(jsonMatch[0]);
-                  provider = "Gemini";
-                }
-              } catch (e) {
-                console.error("Gemini analysis failed:", e);
-                if (geminiKey === "your-gemini-api-key-here") {
-                  console.warn("Gemini API key not configured");
-                }
-              }
-            }
-          }
-
-          // Fallback analysis
-          if (!analysis) {
-            analysis = {
-              disease: "Image analysis pending",
-              severity: "low",
-              confidence: 0,
-              description: "Could not analyze image with AI. Please check your API keys or try again.",
-              recommendations: "Ensure API keys are configured in .env file",
-            };
-            provider = "fallback";
-          }
-
-          setAnalysis(analysis);
+          setAnalysis(data.analysis);
 
           toast({
-            title: `Analysis Complete (${provider})!`,
-            description: `Detected: ${analysis.disease || "Unknown"}`,
+            title: `Analysis Complete!`,
+            description: `Detected: ${data.analysis.disease || "Unknown"}`,
           });
 
           if (onUploadComplete) {
             onUploadComplete();
           }
         } catch (analysisError) {
+          console.error("Analysis error:", analysisError);
+          console.error("Full error object:", { analysisError });
           toast({
             title: "Analysis failed",
             description: analysisError instanceof Error ? analysisError.message : "AI analysis encountered an error",
@@ -251,6 +116,8 @@ Respond in JSON format only:
       reader.readAsDataURL(selectedFile);
 
     } catch (error) {
+      console.error("Upload error:", error);
+      console.error("Full error object:", { error });
       toast({
         title: "Upload failed",
         description: error instanceof Error ? error.message : "An error occurred",
