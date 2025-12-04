@@ -120,7 +120,7 @@ const Dashboard = () => {
 
       // Try ChatGPT
       const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      if (openaiKey) {
+      if (openaiKey && openaiKey !== "your-openai-api-key-here") {
         try {
           console.log("Using ChatGPT for recommendations...");
           const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -136,24 +136,35 @@ const Dashboard = () => {
             }),
           });
 
-          if (response.ok) {
-            const result = await response.json();
-            const content = result.choices?.[0]?.message?.content || "";
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              recommendations = JSON.parse(jsonMatch[0]).recommendations || [];
-              provider = "ChatGPT";
-            }
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`);
+          }
+
+          const result = await response.json();
+          if (result.error) throw new Error(result.error.message);
+          
+          const content = result.choices?.[0]?.message?.content || "";
+          if (!content) throw new Error("No content in ChatGPT response");
+          
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
+            if (recommendations.length > 0) provider = "ChatGPT";
           }
         } catch (e) {
           console.error("ChatGPT failed:", e);
+          if (openaiKey === "your-openai-api-key-here") {
+            console.warn("OpenAI API key not configured");
+          }
         }
       }
 
       // Try Gemini if ChatGPT failed
       if (recommendations.length === 0) {
         const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        if (geminiKey) {
+        if (geminiKey && geminiKey !== "your-gemini-api-key-here") {
           try {
             console.log("Using Gemini for recommendations...");
             const response = await fetch(
@@ -167,17 +178,28 @@ const Dashboard = () => {
               }
             );
 
-            if (response.ok) {
-              const result = await response.json();
-              const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-              const jsonMatch = content.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                recommendations = JSON.parse(jsonMatch[0]).recommendations || [];
-                provider = "Gemini";
-              }
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (result.error) throw new Error(result.error.message);
+
+            const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            if (!content) throw new Error("No content in Gemini response");
+
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const parsed = JSON.parse(jsonMatch[0]);
+              recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
+              if (recommendations.length > 0) provider = "Gemini";
             }
           } catch (e) {
             console.error("Gemini failed:", e);
+            if (geminiKey === "your-gemini-api-key-here") {
+              console.warn("Gemini API key not configured");
+            }
           }
         }
       }
