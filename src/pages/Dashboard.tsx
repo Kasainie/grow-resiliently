@@ -112,12 +112,17 @@ const Dashboard = () => {
 
     setGeneratingRecs(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-recommendations", {
+      console.log("Calling generate-recommendations-simple for farm:", selectedFarm.id);
+      const { data, error } = await supabase.functions.invoke("generate-recommendations-simple", {
         body: { farmId: selectedFarm.id },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
 
+      console.log("Recommendations generated successfully:", data);
       toast({
         title: "Recommendations generated!",
         description: "Check your action plan below.",
@@ -125,9 +130,12 @@ const Dashboard = () => {
 
       fetchRecommendations(selectedFarm.id);
     } catch (error) {
+      console.error("Error generating recommendations:", error);
+      const errorMsg = error instanceof Error ? error.message : "An error occurred";
+      console.error("Full error details:", errorMsg);
       toast({
         title: "Failed to generate recommendations",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: "Edge function may not be deployed. " + errorMsg,
         variant: "destructive",
       });
     } finally {

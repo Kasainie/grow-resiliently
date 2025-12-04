@@ -90,11 +90,13 @@ export const ImageUpload = ({ farmId, plotId, onUploadComplete }: ImageUploadPro
         const imageData = reader.result as string;
 
         try {
-          const { data, error } = await supabase.functions.invoke("analyze-crop", {
-            body: { imageData },
+          console.log("Calling analyze-crop-simple for farm:", farmId);
+          const { data, error } = await supabase.functions.invoke("analyze-crop-simple", {
+            body: { imageData, farmId },
           });
 
           if (error) {
+            console.error("Edge function error:", error);
             if (error.message?.includes("429")) {
               throw new Error("Rate limit exceeded. Please try again later.");
             }
@@ -104,7 +106,8 @@ export const ImageUpload = ({ farmId, plotId, onUploadComplete }: ImageUploadPro
             throw error;
           }
 
-          setAnalysis(data.analysis);
+          console.log("Analysis completed:", data);
+          setAnalysis(data.analysis || data.analysis_text);
           
           toast({ 
             title: "Analysis complete!", 
