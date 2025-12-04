@@ -91,23 +91,115 @@ export const AlertsPanel = ({ farmId }: AlertsPanelProps) => {
 
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-ai-alerts", {
-        body: { farmId },
-      });
+      // Get farm details
+      const { data: farm } = await supabase
+        .from("farms")
+        .select("*")
+        .eq("id", farmId)
+        .maybeSingle();
 
-      if (error) {
-        if (error.message?.includes("429")) {
-          throw new Error("Rate limit exceeded. Please try again later.");
+      if (!farm) throw new Error("Farm not found");
+
+      const prompt = `Generate 4 farm alerts for ${farm.name} (${farm.area_ha}ha, ${farm.soil_type || "unknown"} soil, irrigation: ${farm.has_irrigation ? "yes" : "no"}) in JSON only:
+{"alerts": [{"level": "critical", "title": "Alert 1", "message": "Msg"}, {"level": "warning", "title": "Alert 2", "message": "Msg"}, {"level": "warning", "title": "Alert 3", "message": "Msg"}, {"level": "info", "title": "Alert 4", "message": "Msg"}]}`;
+
+      let alerts = [];
+      let provider = "fallback";
+
+      // Try ChatGPT
+      const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      if (openaiKey) {
+        try {
+          console.log("Using ChatGPT...");
+          const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${openaiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "gpt-3.5-turbo",
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.7,
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const content = result.choices?.[0]?.message?.content || "";
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              alerts = JSON.parse(jsonMatch[0]).alerts || [];
+              provider = "ChatGPT";
+            }
+          }
+        } catch (e) {
+          console.error("ChatGPT failed:", e);
         }
-        if (error.message?.includes("402")) {
-          throw new Error("AI credits exhausted. Please add credits to continue.");
-        }
-        throw error;
       }
 
+      // Try Gemini if ChatGPT failed
+      if (alerts.length === 0) {
+        const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (geminiKey) {
+          try {
+            console.log("Using Gemini...");
+            const response = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                }),
+              }
+            );
+
+            if (response.ok) {
+              const result = await response.json();
+              const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+              const jsonMatch = content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                alerts = JSON.parse(jsonMatch[0]).alerts || [];
+                provider = "Gemini";
+              }
+            }
+          } catch (e) {
+            console.error("Gemini failed:", e);
+          }
+        }
+      }
+
+      // Fallback alerts
+      if (alerts.length === 0) {
+        alerts = [
+          { level: "critical", title: "Monitor Farm", message: `Check your ${farm.area_ha}ha farm for pests/diseases.` },
+          { level: "warning", title: "Soil Management", message: `${farm.soil_type || "Soil"} needs proper amendments.` },
+          { level: "warning", title: farm.has_irrigation ? "Optimize Irrigation" : "Water Critical", message: farm.has_irrigation ? "Review irrigation schedule." : "Manage water carefully." },
+          { level: "info", title: "Weekly Inspections", message: "Scout fields weekly for issues." },
+        ];
+        provider = "default";
+      }
+
+      // Insert alerts
+      const alertsToInsert = alerts.map((a) => ({
+        user_id: user?.id,
+        farm_id: farmId,
+        level: a.level || "info",
+        title: a.title,
+        message: a.message,
+        is_read: false,
+      }));
+
+      const { error } = await supabase.from("alerts").insert(alertsToInsert);
+
+      if (error) throw error;
+
+      setAlerts((prev) => [...prev, ...alerts]);
+
       toast({
-        title: "AI Alerts Generated!",
-        description: `${data.alertsCount} new alerts have been created based on your farm data.`,
+        title: `Alerts Generated (${provider})!`,
+        description: `${alerts.length} new alerts created for your farm.`,
       });
     } catch (error) {
       toast({
