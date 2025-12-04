@@ -90,28 +90,129 @@ export const ImageUpload = ({ farmId, plotId, onUploadComplete }: ImageUploadPro
         const imageData = reader.result as string;
 
         try {
-          console.log("Calling analyze-crop-simple for farm:", farmId);
-          const { data, error } = await supabase.functions.invoke("analyze-crop-simple", {
-            body: { imageData, farmId },
-          });
+          console.log("Starting AI crop analysis...");
 
-          if (error) {
-            console.error("Edge function error:", error);
-            if (error.message?.includes("429")) {
-              throw new Error("Rate limit exceeded. Please try again later.");
+          const prompt = `You are an expert agricultural pathologist. Analyze this crop image and identify:
+1. Any visible diseases, pests, or stress conditions
+2. Severity level (low, medium, high, critical)
+3. Specific treatment recommendations
+
+Respond in JSON format only:
+{"disease": "Disease name or 'Healthy'", "severity": "low|medium|high", "confidence": 0-100, "description": "What you see", "recommendations": "Treatment steps"}`;
+
+          let analysis = null;
+          let provider = "fallback";
+
+          // Try ChatGPT with vision
+          const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
+          if (openaiKey) {
+            try {
+              console.log("Using ChatGPT for crop analysis...");
+              const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${openaiKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "gpt-4o-mini",
+                  messages: [
+                    {
+                      role: "user",
+                      content: [
+                        {
+                          type: "text",
+                          text: prompt,
+                        },
+                        {
+                          type: "image_url",
+                          image_url: {
+                            url: imageData,
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                  max_tokens: 500,
+                }),
+              });
+
+              if (response.ok) {
+                const result = await response.json();
+                const content = result.choices?.[0]?.message?.content || "";
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  analysis = JSON.parse(jsonMatch[0]);
+                  provider = "ChatGPT";
+                }
+              }
+            } catch (e) {
+              console.error("ChatGPT analysis failed:", e);
             }
-            if (error.message?.includes("402")) {
-              throw new Error("AI credits exhausted. Please add credits to continue.");
-            }
-            throw error;
           }
 
-          console.log("Analysis completed:", data);
-          setAnalysis(data.analysis || data.analysis_text);
-          
-          toast({ 
-            title: "Analysis complete!", 
-            description: "AI has analyzed your crop image for diseases and pests." 
+          // Try Gemini if ChatGPT failed
+          if (!analysis) {
+            const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (geminiKey) {
+              try {
+                console.log("Using Gemini for crop analysis...");
+                const base64Image = imageData.split(",")[1];
+                const response = await fetch(
+                  `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      contents: [
+                        {
+                          parts: [
+                            { text: prompt },
+                            {
+                              inlineData: {
+                                mimeType: "image/jpeg",
+                                data: base64Image,
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    }),
+                  }
+                );
+
+                if (response.ok) {
+                  const result = await response.json();
+                  const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                  const jsonMatch = content.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    analysis = JSON.parse(jsonMatch[0]);
+                    provider = "Gemini";
+                  }
+                }
+              } catch (e) {
+                console.error("Gemini analysis failed:", e);
+              }
+            }
+          }
+
+          // Fallback analysis
+          if (!analysis) {
+            analysis = {
+              disease: "Image analysis pending",
+              severity: "low",
+              confidence: 0,
+              description: "Could not analyze image with AI. Please check your API keys or try again.",
+              recommendations: "Ensure API keys are configured in .env file",
+            };
+            provider = "fallback";
+          }
+
+          setAnalysis(analysis);
+
+          toast({
+            title: `Analysis Complete (${provider})!`,
+            description: `Detected: ${analysis.disease || "Unknown"}`,
           });
 
           if (onUploadComplete) {
