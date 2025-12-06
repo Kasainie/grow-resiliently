@@ -7,6 +7,69 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Ensure analysis object contains all expected fields and expand short descriptions
+function ensureCompleteAnalysis(raw: any) {
+  const defaults = {
+    disease: "Unknown",
+    severity: "low",
+    confidence: 0,
+    cropType: "Unknown",
+    growthStage: "Unknown",
+    overallHealth: "Unknown",
+    description: "No detailed description provided.",
+    symptoms: [] as string[],
+    possibleCauses: [] as string[],
+    riskFactors: "Not specified",
+    immediateActions: "No immediate actions suggested.",
+    shortTermTreatment: "No short-term treatment suggested.",
+    longTermManagement: "No long-term management suggestions.",
+    recommendedProducts: [] as string[],
+    monitoringSchedule: "Monitor regularly",
+    weatherConsiderations: "No weather considerations provided",
+    alternativeSolutions: "No alternatives provided",
+  };
+
+  const analysis: any = { ...defaults, ...(raw || {}) };
+
+  // Normalize confidence
+  const conf = Number(analysis.confidence);
+  analysis.confidence = isNaN(conf) ? defaults.confidence : Math.max(0, Math.min(100, Math.round(conf)));
+
+  // Ensure arrays
+  if (!Array.isArray(analysis.symptoms)) analysis.symptoms = analysis.symptoms ? [String(analysis.symptoms)] : [];
+  if (!Array.isArray(analysis.possibleCauses)) analysis.possibleCauses = analysis.possibleCauses ? [String(analysis.possibleCauses)] : [];
+  if (!Array.isArray(analysis.recommendedProducts)) analysis.recommendedProducts = analysis.recommendedProducts ? [String(analysis.recommendedProducts)] : [];
+
+  // Expand short description into a longer, structured paragraph
+  const desc = (analysis.description || "").toString().trim();
+  if (desc.length < 120) {
+    const pieces = [] as string[];
+    pieces.push(`Observed primary issue: ${analysis.disease || analysis.cropType || 'unknown'}.`);
+    if (analysis.symptoms && analysis.symptoms.length) {
+      pieces.push(`Visible symptoms include: ${analysis.symptoms.join(', ')}.`);
+    }
+    if (analysis.possibleCauses && analysis.possibleCauses.length) {
+      pieces.push(`Possible contributing factors: ${analysis.possibleCauses.join(', ')}.`);
+    }
+    pieces.push(`Severity assessed as ${analysis.severity || 'unknown'} with an estimated confidence of ${analysis.confidence}%.`);
+    pieces.push(`Recommended immediate actions and monitoring guidance are provided below to help manage the issue effectively.`);
+    analysis.description = pieces.join(' ');
+  }
+
+  // Make immediateActions and shortTermTreatment slightly more descriptive if still defaults
+  if (!analysis.immediateActions || analysis.immediateActions === defaults.immediateActions) {
+    analysis.immediateActions = `Isolate affected plants if practical, remove severely diseased tissue, avoid overhead irrigation, and apply recommended interventions based on product guidance. Re-check within 24-48 hours.`;
+  }
+
+  if (!analysis.shortTermTreatment || analysis.shortTermTreatment === defaults.shortTermTreatment) {
+    analysis.shortTermTreatment = `Apply targeted treatments (biologicals or chemical, as appropriate) according to label instructions. Prioritize low-toxicity options and follow integrated pest management (IPM) principles.`;
+  }
+
+  // Ensure recommendedProducts contains readable names
+  analysis.recommendedProducts = analysis.recommendedProducts.map((p: any) => String(p)).slice(0, 6);
+
+  return analysis;
+}
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -93,7 +156,12 @@ Be thorough, specific, and practical in your recommendations.`;
           const content = result.choices?.[0]?.message?.content || "";
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            analysis = JSON.parse(jsonMatch[0]);
+            try {
+              const parsed = JSON.parse(jsonMatch[0]);
+              analysis = ensureCompleteAnalysis(parsed);
+            } catch (e) {
+              console.error('Failed to parse ChatGPT response JSON:', e);
+            }
           }
         }
       } catch (e) {
@@ -134,7 +202,12 @@ Be thorough, specific, and practical in your recommendations.`;
           const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            analysis = JSON.parse(jsonMatch[0]);
+            try {
+              const parsed = JSON.parse(jsonMatch[0]);
+              analysis = ensureCompleteAnalysis(parsed);
+            } catch (e) {
+              console.error('Failed to parse Gemini response JSON:', e);
+            }
           }
         }
       } catch (e) {
@@ -207,7 +280,7 @@ Be thorough, specific, and practical in your recommendations.`;
   } catch (error) {
     console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
